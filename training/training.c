@@ -17,6 +17,8 @@
 #include <omp.h>
 #include <math.h>
 
+#define THREADS 8
+
 /**
  * @brief Iniciatlitza la capa incial de la xarxa (input layer) amb l'entrada
  * que volem reconeixer.
@@ -24,7 +26,7 @@
  * @param i Índex de l'element del conjunt d'entrenament que farem servir.
  **/
 void feed_input(int i) {
-    #pragma omp parallel for num_threads(2)
+    #pragma omp parallel for num_threads(THREADS)
     for (int j = 0; j < num_neurons[0]; j++)
         lay[0].actv[j] = input[i][j];
 }
@@ -49,14 +51,16 @@ void feed_input(int i) {
  *
  */
 void forward_prop() {
-    #pragma omp parallel for num_threads(2)
     for (int i = 1; i < num_layers; i++) {
+        //#pragma omp parallel for num_threads(THREADS) // For some reason it works better without paralelization
         for (int j = 0; j < num_neurons[i]; j++) {
-            lay[i].z[j] = lay[i].bias[j];
+            float tmp = 0.0;
+            //#pragma omp for reduction(+:tmp) // Adds seconds
             for (int k = 0; k < num_neurons[i - 1]; k++)
-                lay[i].z[j] +=
+                tmp +=
                     ((lay[i - 1].out_weights[j * num_neurons[i - 1] + k]) *
                      (lay[i - 1].actv[k]));
+            lay[i].z[j] = tmp + lay[i].bias[j];
 
             if (i <
                 num_layers - 1)  // Relu Activation Function for Hidden Layers
@@ -89,7 +93,7 @@ void forward_prop() {
  */
 void back_prop(int p) {
     // Output Layer
-    #pragma omp parallel for num_threads(2)
+    #pragma omp parallel for num_threads(THREADS)
     for (int j = 0; j < num_neurons[num_layers - 1]; j++) {
         lay[num_layers - 1].dz[j] =
             (lay[num_layers - 1].actv[j] - desired_outputs[p][j]) *
@@ -97,7 +101,7 @@ void back_prop(int p) {
         lay[num_layers - 1].dbias[j] = lay[num_layers - 1].dz[j];
     }
 
-    #pragma omp parallel for num_threads(2)
+    #pragma omp parallel for collapse(2) num_threads(THREADS) if(THREADS < 3) //Works properly with 2 threads
     for (int j = 0; j < num_neurons[num_layers - 1]; j++) {
         for (int k = 0; k < num_neurons[num_layers - 2]; k++) {
             lay[num_layers - 2].dw[j * num_neurons[num_layers - 2] + k] =
@@ -110,11 +114,12 @@ void back_prop(int p) {
     }
 
     // Hidden Layers
-    #pragma omp parallel for num_threads(2)
     for (int i = num_layers - 2; i > 0; i--) {
+        //#pragma omp parallel for num_threads(THREADS) //It adds a bit of seconds
         for (int j = 0; j < num_neurons[i]; j++) {
             lay[i].dz[j] = (lay[i].z[j] >= 0) ? lay[i].dactv[j] : 0;
 
+            //#pragma omp parallel for //It adds a lot of time
             for (int k = 0; k < num_neurons[i - 1]; k++) {
                 lay[i - 1].dw[j * num_neurons[i - 1] + k] =
                     lay[i].dz[j] * lay[i - 1].actv[k];
@@ -137,14 +142,15 @@ void back_prop(int p) {
  * @see back_prop
  */
 void update_weights(void) {
-    #pragma omp parallel for num_threads(2)
     for (int i = 0; i < num_layers - 1; i++) {
+        //#pragma omp parallel for num_threads(THREADS) //It adds seconds
         for (int j = 0; j < num_neurons[i + 1]; j++)
             for (int k = 0; k < num_neurons[i]; k++)  // Update Weights
                 lay[i].out_weights[j * num_neurons[i] + k] =
                     (lay[i].out_weights[j * num_neurons[i] + k]) -
                     (alpha * lay[i].dw[j * num_neurons[i] + k]);
 
+        #pragma omp parallel for num_threads(THREADS)
         for (int j = 0; j < num_neurons[i]; j++)  // Update Bias
             lay[i].bias[j] = lay[i].bias[j] - (alpha * lay[i].dbias[j]);
     }
