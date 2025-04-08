@@ -1,0 +1,63 @@
+This file is designed to store the small improvements I do with 2 threads, 10 epochs i think
+
+ok so base code: 10.80s
+feed_input parallelisation: 10.43s
+training line 96: 10.43s No siginifcant effect, expected improvement with higher number of thread
+
+backprop_semi paralelized.
+I still do not know how to properlly parallelize the hidden layers loop so i'll leave it like that
+
+around 9.9 seconds
+
+
+Forward pinta muy dificil de parallelizar, no me acaba de salir na y lo que hago le añade un segundo a lo tonto
+
+
+04/05/2025
+Por falta de commentarios me va a hacer falta revisitar el training bien  pa saber donde he aumentado el tiempo
+El codigo actual es de 10.5 aprox
+
+Epico, hoy alguien lleva 3 horas ocupadas de cluster tol dia
+
+
+
+
+Parallelized time down to 10.9
+
+
+Parallelized time 10.5 currently
+
+
+Parallelized time 10.2
+
+Tests from 04/05/2025 afternoon
+
+Currently looking at 10.05 with an error on the backprop function. I'll be looking into it
+
+Also, now it executes always with 4 threads for whatever reason
+
+
+05/05/2025
+After testing and questioning we have determined that trying to optimize loops with dependencies between them
+is useless or impossible. We wil not try to do that for further tests
+
+Also, important note errors on the code might lead to thread count not properly update.
+
+Tried to implmenet reduction on forward prop by adding a variable to work on. Errors left and right did not allow me any progress.
+I am unsure how to implement it since if I either leave the variable private or shared it pops up a different error.
+
+Ok, even after testing in a test environemnt it does work, idk what is the issue here man
+
+
+Apparently it wias not evenwith the parallel command and with it it is even worse, Idk man, im tired, i'll sleep
+
+
+06/05/2025
+Good morning! First step will be to undo the tests of yesterday. Second thing may be browsing some tutorial because this is not working.
+The damage is undone.
+
+
+06/05/2025 Afternoon
+The update weights functions now seems to be optimized to a decent level
+It is currently at 10.2s with two threads. And around 6.6 seconds with 8 threads currently.
+
